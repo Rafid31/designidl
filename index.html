@@ -742,7 +742,11 @@ async function downloadFile(url) {
   /* ── Strategy 1: Render.com Proxy (server-side, CORS bypass + ZIP wrap) ── */
   try {
     const PROXY = 'https://designidl-proxy.onrender.com/proxy';
-    const resp = await fetch(PROXY + '?url=' + encodeURIComponent(url));
+    // Pass the Designi session token (set by admin in admin-panel) as a request header
+    const _dt = getCookie('ddl_dt') || '';
+    const resp = await fetch(PROXY + '?url=' + encodeURIComponent(url), {
+      headers: _dt ? { 'X-DT': _dt } : {}
+    });
     if (!resp.ok) throw new Error('PROXY_HTTP_' + resp.status);
 
     // Proxy always returns a ZIP — prefer X-Filename, then Content-Disposition
