@@ -344,6 +344,25 @@ tr:hover td{background:var(--surface2)}
     </section>
 
     <!-- GENERATE TOKEN -->
+    <div class="card" id="designiTokenCard">
+      <div class="card-title">🔑 Designi Account Token</div>
+      <p style="margin:0 0 12px;font-size:13px;opacity:.75">
+        Enter your Designi.com.br session token once. It is stored in this browser and sent
+        securely with every download request. Without it, downloads will fail.
+      </p>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <label class="field-label" for="designiTokenInput">Session Token (JWT)</label>
+          <input id="designiTokenInput" type="password" class="gen-input"
+            placeholder="eyJ..." autocomplete="off"
+            style="width:100%;font-family:monospace;font-size:12px"/>
+        </div>
+        <button class="btn-primary" onclick="saveDesigniToken()" style="height:38px;padding:0 18px">Save Token</button>
+        <button class="btn-secondary" onclick="clearDesigniToken()" style="height:38px;padding:0 14px">Clear</button>
+      </div>
+      <div id="designiTokenStatus" style="margin-top:8px;font-size:12px;opacity:.7"></div>
+    </div>
+
     <div class="card">
       <div class="card-title">Generate Token</div>
       <div class="gen-row">
@@ -605,6 +624,32 @@ function revokeToken(id){
   toast('Revoked '+id+'.','twarn');
 }
 
+/* ── Designi account token (stored in cookie, shared with index.html) ── */
+function saveDesigniToken(){
+  const tok = document.getElementById('designiTokenInput').value.trim();
+  if (!tok) { toast('Enter a token first.','twarn'); return; }
+  setCookie('ddl_dt', tok, 365);
+  document.getElementById('designiTokenStatus').textContent = '✓ Token saved — expires in 365 days.';
+  document.getElementById('designiTokenInput').value = '';
+  toast('Designi token saved!','tok');
+}
+function clearDesigniToken(){
+  delCookie('ddl_dt');
+  document.getElementById('designiTokenStatus').textContent = 'Token cleared.';
+  toast('Designi token cleared.','twarn');
+}
+function loadDesigniTokenStatus(){
+  const tok = getCookie('ddl_dt');
+  const el  = document.getElementById('designiTokenStatus');
+  if (tok) {
+    el.textContent = '✓ Token is set (' + tok.slice(0,12) + '...). Downloads are ready.';
+    el.style.color = '#22c55e';
+  } else {
+    el.textContent = '⚠ No token set — downloads will fail until you save one.';
+    el.style.color = '#f59e0b';
+  }
+}
+
 function renderAll(){
   renderStats();
   renderTable(document.getElementById('searchInput').value);
@@ -658,6 +703,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Check auth cookie
   if(getCookie('admin_auth')==='1'){
     showApp();
+    loadDesigniTokenStatus();
   }
 
   // Login
