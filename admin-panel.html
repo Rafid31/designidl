@@ -437,14 +437,31 @@ function getCookie(n){const m=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;
 function delCookie(n){document.cookie=n+'=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax'}
 
 /* ═══════════════════════════════════════
-   TOKEN DATA (in-memory)
-   ═══════════════════════════════════════ */
+   TOKEN DATA — persisted in cookie
+   ═══════════════════════════════════════
+   ddl_admin_state  →  full TOKENS array (JSON), 365-day expiry.
+   Loaded on every page load so deletions/additions survive refresh.
+*/
 const now = Date.now();
-let TOKENS = [
-  { id:'DEMO-1234-ABCD', name:'Demo User', days:30, dailyLimit:20, createdAt:now, expiresAt:now+30*864e5 },
-  { id:'VIP-9999-ZZZZ',  name:'VIP Client', days:30, dailyLimit:50, createdAt:now, expiresAt:now+30*864e5 },
-  { id:'TEST-0000-TEST', name:'Test Account', days:30, dailyLimit:5,  createdAt:now-31*864e5, expiresAt:now-1*864e5 } // already expired
+
+const DEFAULT_TOKENS = [
+  { id:'DEMO-1234-ABCD', name:'Demo User',     days:30, dailyLimit:20, createdAt:now, expiresAt:now+30*864e5 },
+  { id:'VIP-9999-ZZZZ',  name:'VIP Client',    days:30, dailyLimit:50, createdAt:now, expiresAt:now+30*864e5 },
+  { id:'TEST-0000-TEST', name:'Test Account',   days:30, dailyLimit:5,  createdAt:now-31*864e5, expiresAt:now-1*864e5 },
 ];
+
+function loadAdminState() {
+  try {
+    const raw = getCookie('ddl_admin_state');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return null;
+}
+function saveAdminState() {
+  try { setCookie('ddl_admin_state', JSON.stringify(TOKENS), 365); } catch(e) {}
+}
+
+let TOKENS = loadAdminState() || DEFAULT_TOKENS.slice();
 
 /* ═══════════════════════════════════════
    TOKEN GENERATION
@@ -591,7 +608,8 @@ function revokeToken(id){
 function renderAll(){
   renderStats();
   renderTable(document.getElementById('searchInput').value);
-  syncTokensCookie();
+  syncTokensCookie();   // update ddl_tokens for the user app
+  saveAdminState();     // persist full admin state so changes survive refresh
 }
 
 /* ═══════════════════════════════════════
