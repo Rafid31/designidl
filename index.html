@@ -476,6 +476,21 @@ function delCookie(name) {
   document.cookie = name + '=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax';
 }
 
+/* ── Persistent usage cookie (survives logout) ── */
+function usageCookieName(tokenId) { return 'ddl_u_' + (tokenId || '').replace(/-/g, '_'); }
+function saveUsage() {
+  if (!S || !S.token) return;
+  const name = usageCookieName(S.token);
+  try { setCookie(name, JSON.stringify(S.usage || {}), 365); } catch(e) {}
+}
+function loadUsage(tokenId) {
+  try {
+    const raw = getCookie(usageCookieName(tokenId));
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return {};
+}
+
 /* ═══════════════════════════════════════
    MERGED TOKEN LOOKUP
    ═══════════════════════════════════════
@@ -563,6 +578,7 @@ function recordUsage() {
   const dk = dayKey(), mk = monKey();
   S.usage[dk] = (S.usage[dk] || 0) + 1;
   S.usage[mk] = (S.usage[mk] || 0) + 1;
+  saveUsage();     // persist counts in separate cookie (survives logout)
   saveSession();
 }
 
@@ -818,8 +834,8 @@ function activateToken(tokenId) {
     monthlyLimit: plan.monthlyLimit,
     activatedAt: now,
     expiresAt: now + plan.days * 86400000,
-    usage: {},
-    history: []
+    usage: loadUsage(tokenId.toUpperCase()), // restore counts, NOT history
+    history: []                              // history always starts fresh
   };
   saveSession();
   return true;
@@ -880,6 +896,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Logout
   document.getElementById('logoutBtn').addEventListener('click', () => {
+    // Wipe only the session cookie (history + current state).
+    // The usage cookie (ddl_u_*) is intentionally preserved so download
+    // counts survive logout and are restored on the next login.
     S = null;
     delCookie('ddl_s');
     showLogin();
