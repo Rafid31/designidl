@@ -32,7 +32,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin',  '*');
   res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, X-DT');
   res.header('Access-Control-Expose-Headers','Content-Disposition, X-Filename, X-Error');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
@@ -110,14 +110,17 @@ app.get('/proxy', async (req, res) => {
     console.log(`[proxy] hash=${urlHash}`);
 
     // ── 2. Meilisearch lookup — get file metadata ──
-    const meta = await invokeEdge('meilisearch-proxy', {
+    const metaResp = await invokeEdge('meilisearch-proxy', {
       action:     'getDesignDetailData',
       documentId: urlHash,
     });
 
+    // Response is nested: { design: { id, originalFilename, extension, shortUrl, ... } }
+    const meta = metaResp && metaResp.design ? metaResp.design : metaResp;
+
     if (!meta || meta.error || !meta.id) {
-      console.error('[proxy] meilisearch-proxy error:', meta);
-      return res.status(404).json({ error: 'File not found in index.', detail: meta });
+      console.error('[proxy] meilisearch-proxy error:', metaResp);
+      return res.status(404).json({ error: 'File not found in index.', detail: metaResp });
     }
 
     const fileId   = parseInt(meta.id, 10);
@@ -128,8 +131,15 @@ app.get('/proxy', async (req, res) => {
       : rawName;
     console.log(`[proxy] fileId=${fileId}  filename=${filename}`);
 
-    // ── 3. Register the download with the user's Designi JWT ──
-    const dlData = await invokeEdge('register-download', { file_id: fileId }, DESIGNI_TOKEN);
+    // ── 3. Register the download — token from env var OR X-DT request header ──
+    // The admin panel stores the token in a cookie; the frontend passes it as X-DT.
+    const requestToken = req.headers['x-dt'] || DESIGNI_TOKEN;
+    if (!requestToken) {
+      return res.status(503).json({
+        error: 'No Designi token configured. Set it in the Admin Panel → Designi Token field.'
+      });
+    }
+    const dlData = await invokeEdge('register-download', { file_id: fileId }, requestToken);
 
     if (!dlData || dlData.error || dlData.message) {
       console.error('[proxy] register-download error:', dlData);
