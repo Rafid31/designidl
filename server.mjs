@@ -19,10 +19,20 @@ import express from 'express';
 import JSZip   from 'jszip';
 import path    from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app  = express();
 const PORT = process.env.PORT || 3000;
+
+// ── Load persisted token from disk (survives redeploys on Render Disk) ──
+const TOKEN_FILE = path.join(__dirname, '.designi_token');
+try {
+  if (!process.env.DESIGNI_TOKEN && existsSync(TOKEN_FILE)) {
+    process.env.DESIGNI_TOKEN = readFileSync(TOKEN_FILE, 'utf8').trim();
+    console.log('Loaded DESIGNI_TOKEN from disk.');
+  }
+} catch(e) { console.warn('Could not read token file:', e.message); }
 
 // ── Designi / Supabase constants (public, from the app bundle) ────
 const SUPABASE_URL  = 'https://soueuzuauddqhuojssek.supabase.co';
@@ -191,8 +201,19 @@ app.get('/proxy', async (req, res) => {
   }
 });
 
+// ── One-time token setup (call once after deploy) ────────────────
+app.get('/setup', (req, res) => {
+  const { token, pass } = req.query;
+  if (pass !== 'DesigniAdmin2024!') return res.status(403).json({ error: 'Wrong password.' });
+  if (!token || token.length < 20) return res.status(400).json({ error: 'Token too short.' });
+  process.env.DESIGNI_TOKEN = token;
+  try { writeFileSync(TOKEN_FILE, token, 'utf8'); } catch(e) { /* ephemeral disk, ignore */ }
+  console.log('DESIGNI_TOKEN set via /setup endpoint.');
+  res.json({ ok: true, prefix: token.slice(0, 8) + '...' });
+});
+
 // ── Health check ─────────────────────────────────────────────────
-app.get('/health', (_req, res) => res.json({ status: 'ok', version: '3.0' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', version: '3.0', token_set: !!process.env.DESIGNI_TOKEN }));
 
 // ── Static files + SPA fallback ───────────────────────────────────
 app.use(express.static(__dirname));
