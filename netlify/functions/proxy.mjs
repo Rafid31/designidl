@@ -86,7 +86,10 @@ export async function handler(event) {
     }
 
     // Convert to base64 for Netlify Function response
-    const base64 = Buffer.from(buffer).toString('base64');
+    const uint8 = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+    const base64 = btoa(binary);
 
     // Extract filename from URL or Content-Disposition
     let filename = parsed.pathname.split('/').pop() || 'download';
@@ -96,10 +99,41 @@ export async function handler(event) {
       if (match) filename = match[2];
     }
 
+    // If filename has no extension, map from Content-Type
+    if (filename.indexOf('.') === -1) {
+      const ctMap = {
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+        'image/svg+xml': '.svg',
+        'application/pdf': '.pdf',
+        'application/zip': '.zip',
+        'application/x-zip-compressed': '.zip',
+        'application/x-rar-compressed': '.rar',
+        'video/mp4': '.mp4',
+        'video/quicktime': '.mov',
+        'application/postscript': '.eps',
+        'application/illustrator': '.ai',
+        'image/vnd.adobe.photoshop': '.psd',
+        'application/x-photoshop': '.psd'
+      };
+      for (const [type, ext] of Object.entries(ctMap)) {
+        if (contentType.toLowerCase().includes(type)) {
+          filename += ext;
+          break;
+        }
+      }
+      // Fallback
+      if (filename.indexOf('.') === -1) filename += '.psd'; // Default assume PSD for Designi if unknown
+    }
+
+    // Ensure we send back the header so client can read it
     return {
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
+        'Access-Control-Expose-Headers': 'Content-Disposition, Content-Type',
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,
         'X-Proxy-Content-Length': buffer.byteLength.toString(),
