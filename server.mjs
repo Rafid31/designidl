@@ -1,205 +1,192 @@
 /**
- * DesigniDL — Render.com Proxy Server v2.0
+ * DesigniDL — Render.com Proxy Server v3.0
  * ─────────────────────────────────────────
- * Fetches the real file from a Designi page URL, wraps it in a ZIP,
- * and streams it back to the browser with correct headers.
+ * Uses Designi's real API (Supabase + Meilisearch) to download
+ * the actual file and return it as a ZIP archive.
  *
- * Deploy: connect GitHub repo Rafid31/designidl to Render.com
- *   Build:  npm install
- *   Start:  node server.mjs
+ * Env vars required (set in Render → Environment):
+ *   DESIGNI_TOKEN  — your Designi session JWT
+ *                    Get it: log into designi.com.br → DevTools
+ *                    → Application → Local Storage → designi_session_token
  *
- * Endpoint: GET /proxy?url=<encoded-designi-url>
+ * Endpoints:
+ *   GET /proxy?url=https://www.designi.com.br/<hash>
+ *   GET /health
+ *   GET /  → serves index.html
  */
 
 import express from 'express';
 import JSZip   from 'jszip';
+import path    from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app  = express();
 const PORT = process.env.PORT || 3000;
+
+// ── Designi / Supabase constants (public, from the app bundle) ────
+const SUPABASE_URL  = 'https://soueuzuauddqhuojssek.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdWV1enVhdWRkcWh1b2pzc2VrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0MzcwODAsImV4cCI6MjA4MjAxMzA4MH0.rrT9f6Y0igImXG-lQq72I7zwaOvHxCtCNtW6XkOyEAU';
 
 // ── CORS ─────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin',  '*');
   res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With');
-  res.header('Access-Control-Expose-Headers','Content-Disposition, Content-Type, X-Filename');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Expose-Headers','Content-Disposition, X-Filename, X-Error');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
-// ── BROWSER-LIKE HEADERS ─────────────────────────────────────────
+// ── BROWSER HEADERS ───────────────────────────────────────────────
 const UA = {
   'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
   'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-  'Accept-Encoding': 'gzip, deflate, br',
-  'Connection':      'keep-alive',
 };
 
-// ── MIME → EXTENSION ─────────────────────────────────────────────
-const MIME_EXT = {
-  'image/jpeg':'jpg','image/png':'png','image/gif':'gif','image/webp':'webp',
-  'image/svg+xml':'svg','application/pdf':'pdf',
-  'application/zip':'zip','application/x-zip-compressed':'zip',
-  'application/x-rar-compressed':'rar','application/vnd.rar':'rar',
-  'video/mp4':'mp4','video/quicktime':'mov',
-  'application/postscript':'eps','application/illustrator':'ai',
-  'image/vnd.adobe.photoshop':'psd','application/x-photoshop':'psd',
-  'application/octet-stream':'psd',
-};
-const mimeToExt = ct => MIME_EXT[(ct||'').toLowerCase().split(';')[0].trim()] || 'file';
-
-// ── FILENAME FROM HEADERS ─────────────────────────────────────────
-function extractFilename(headers, fallback) {
-  const cd = headers.get('content-disposition') || '';
-  const rfc = cd.match(/filename\*=(?:UTF-8''|utf-8'')([^;\s]+)/i);
-  if (rfc) return decodeURIComponent(rfc[1]);
-  const plain = cd.match(/filename=["']?([^"';\r\n]+)["']?/i);
-  if (plain) return plain[1].trim().replace(/^["']|["']$/g,'');
-  return fallback || 'designi_file';
+// ── CALL SUPABASE EDGE FUNCTION ───────────────────────────────────
+async function invokeEdge(fnName, body, userToken) {
+  const headers = {
+    'apikey':        SUPABASE_ANON,
+    'Authorization': `Bearer ${userToken || SUPABASE_ANON}`,
+    'Content-Type':  'application/json',
+  };
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/${fnName}`, {
+    method:  'POST',
+    headers,
+    body:    JSON.stringify(body),
+  });
+  return resp.json();
 }
 
-// ── SCRAPE HTML FOR REAL DOWNLOAD URL ────────────────────────────
-function findRealUrl(html, pageUrl) {
-  const base = new URL(pageUrl);
-
-  // A: CDN/storage URL with known file extension
-  const cdnRe = /["'`](https?:\/\/[^"'`\s]+?\.(?:psd|png|jpg|jpeg|svg|ai|eps|zip|rar|pdf|mp4|mov|gif|webp)(?:[?#][^"'`\s]*)?)["'`]/gi;
-  let m;
-  while ((m = cdnRe.exec(html)) !== null) {
-    if (/cdn\.|s3\.|storage\.|media\.|files\.|download\.|assets\./.test(m[1])) return m[1];
-  }
-  // Second pass — any URL with file extension
-  const anyRe = /["'`](https?:\/\/[^"'`\s]+?\.(?:psd|png|jpg|jpeg|svg|ai|eps|zip|rar|pdf|mp4|mov|gif|webp)(?:[?#][^"'`\s]*)?)["'`]/gi;
-  m = anyRe.exec(html);
-  if (m) return m[1];
-
-  // B: data-url / data-download / data-file attributes
-  const dataRe = /data-(?:url|download|file|src|href)=["']([^"']+)["']/gi;
-  while ((m = dataRe.exec(html)) !== null) {
-    if (/\.(?:psd|png|jpg|jpeg|svg|ai|eps|zip|rar|pdf|mp4|mov|gif|webp)/i.test(m[1]))
-      return m[1].startsWith('http') ? m[1] : base.origin + (m[1].startsWith('/')?'':'/') + m[1];
-  }
-
-  // C: JSON "url" / "download_url" fields
-  const jsonRe = /"(?:url|download_url|file_url|src)"\s*:\s*"(https?:\/\/[^"]+)"/gi;
-  while ((m = jsonRe.exec(html)) !== null) {
-    if (/\.(?:psd|png|jpg|jpeg|svg|ai|eps|zip|rar|pdf|mp4|mov|gif|webp)/i.test(m[1])) return m[1];
-  }
-
-  // D: href with file extension
-  const hrefRe = /href=["']([^"']+\.(?:psd|png|jpg|jpeg|svg|ai|eps|zip|rar|pdf|mp4|mov|gif|webp)[^"']*)["']/gi;
-  m = hrefRe.exec(html);
-  if (m) return m[1].startsWith('http') ? m[1] : base.origin + m[1];
-
-  return null;
+// ── SANITISE FILENAME ─────────────────────────────────────────────
+function safeFilename(name) {
+  return (name || 'designi_file')
+    .replace(/[/\\?%*:|"<>]/g, '_')
+    .replace(/\s+/g, '_')
+    .slice(0, 180);
 }
 
-// ── WRAP BUFFER IN ZIP AND RESPOND ───────────────────────────────
+// ── WRAP BUFFER IN ZIP (skip if already ZIP) ──────────────────────
 async function respondZip(res, buffer, filename) {
-  const safe = filename.replace(/[^a-zA-Z0-9._\-()\s]/g,'_').replace(/\s+/g,'_');
-  // Already a ZIP? (PK magic bytes 50 4B)
-  const b = new Uint8Array(buffer);
-  if (b[0]===0x50 && b[1]===0x4B) {
-    const zn = safe.endsWith('.zip') ? safe : safe.replace(/\.[^.]+$/,'.zip');
-    res.header('Content-Type','application/zip');
-    res.header('Content-Disposition',`attachment; filename="${zn}"`);
-    res.header('X-Filename', zn);
-    return res.send(Buffer.from(buffer));
+  const safe = safeFilename(filename);
+  const bytes = new Uint8Array(buffer);
+  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4B;
+  const zipName = safe.endsWith('.zip') ? safe : safe.replace(/\.[^.]+$/, '') + '.zip';
+
+  let out;
+  if (isZip) {
+    out = Buffer.from(buffer);          // already a ZIP — serve as-is
+  } else {
+    const zip = new JSZip();
+    zip.file(safe, buffer);
+    out = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
   }
-  const zip = new JSZip();
-  zip.file(safe, buffer);
-  const out = await zip.generateAsync({ type:'nodebuffer', compression:'DEFLATE', compressionOptions:{level:6} });
-  const zn  = safe.replace(/\.[^.]+$/,'.zip');
-  res.header('Content-Type','application/zip');
-  res.header('Content-Disposition',`attachment; filename="${zn}"`);
-  res.header('X-Filename', zn);
+  res.header('Content-Type',        'application/zip');
+  res.header('Content-Disposition', `attachment; filename="${zipName}"`);
+  res.header('X-Filename',           zipName);
   return res.send(out);
 }
 
-// ── MAIN PROXY ENDPOINT ──────────────────────────────────────────
+// ── /proxy — MAIN DOWNLOAD ENDPOINT ──────────────────────────────
 app.get('/proxy', async (req, res) => {
-  const targetUrl = req.query.url;
-  if (!targetUrl) return res.status(400).json({ error:'Missing ?url= parameter' });
-
-  let parsed;
-  try { parsed = new URL(targetUrl); }
-  catch { return res.status(400).json({ error:'Invalid URL' }); }
-  if (!['http:','https:'].includes(parsed.protocol))
-    return res.status(400).json({ error:'Only HTTP/HTTPS allowed' });
-
-  const opts = (extra={}) => ({
-    headers: { ...UA, Accept:'*/*', Referer:'https://www.designi.com.br/', ...extra },
-    redirect:'follow',
-  });
-
   try {
-    // ── Round 1: Fetch URL directly — may already be a binary file ──
-    const r1  = await fetch(targetUrl, opts());
-    const ct1 = (r1.headers.get('content-type')||'').toLowerCase();
-
-    if (r1.ok && !ct1.includes('text/html') && !ct1.includes('text/plain')) {
-      const buf  = await r1.arrayBuffer();
-      const ext  = mimeToExt(ct1);
-      const name = extractFilename(r1.headers, `designi_file.${ext}`);
-      return respondZip(res, buf, name);
+    const DESIGNI_TOKEN = process.env.DESIGNI_TOKEN;
+    if (!DESIGNI_TOKEN) {
+      return res.status(503).json({ error: 'DESIGNI_TOKEN not configured on server.' });
     }
 
-    // ── Round 2: Got HTML — scrape for real download link ───────
-    if (ct1.includes('text/html')) {
-      const html   = await r1.text();
-      const realUrl = findRealUrl(html, targetUrl);
-      if (realUrl && realUrl !== targetUrl) {
-        const r2  = await fetch(realUrl, opts());
-        const ct2 = (r2.headers.get('content-type')||'').toLowerCase();
-        if (r2.ok && !ct2.includes('text/html')) {
-          const buf  = await r2.arrayBuffer();
-          const ext  = mimeToExt(ct2);
-          const name = extractFilename(r2.headers, `designi_file.${ext}`);
-          return respondZip(res, buf, name);
-        }
-      }
+    const targetUrl = req.query.url;
+    if (!targetUrl) {
+      return res.status(400).json({ error: 'Missing ?url= parameter.' });
     }
 
-    // ── Round 3: Try Designi-specific endpoint patterns ──────────
-    const slug = parsed.pathname.replace(/^\/+|\/+$/g,'');
-    for (const u of [
-      `${parsed.origin}/download/${slug}`,
-      `${parsed.origin}/baixar/${slug}`,
-      `${parsed.origin}/file/${slug}`,
-      `${parsed.origin}/api/download/${slug}`,
-    ]) {
-      try {
-        const r  = await fetch(u, opts());
-        const ct = (r.headers.get('content-type')||'').toLowerCase();
-        if (r.ok && !ct.includes('text/html')) {
-          const buf  = await r.arrayBuffer();
-          const ext  = mimeToExt(ct);
-          const name = extractFilename(r.headers, `designi_file.${ext}`);
-          return respondZip(res, buf, name);
-        }
-      } catch { /* try next */ }
+    // ── 1. Extract the URL hash from the Designi page URL ──
+    // e.g. https://www.designi.com.br/ba0f354444bc10f6  →  ba0f354444bc10f6
+    const urlHash = targetUrl.replace(/\/$/, '').split('/').pop();
+    if (!urlHash) {
+      return res.status(400).json({ error: 'Could not extract hash from URL.' });
     }
+    console.log(`[proxy] hash=${urlHash}`);
 
-    return res.status(404).json({
-      error:'No downloadable file found at this URL.',
-      hint:'The Designi page may require authentication or the link has expired.',
+    // ── 2. Meilisearch lookup — get file metadata ──
+    const meta = await invokeEdge('meilisearch-proxy', {
+      action:     'getDesignDetailData',
+      documentId: urlHash,
     });
+
+    if (!meta || meta.error || !meta.id) {
+      console.error('[proxy] meilisearch-proxy error:', meta);
+      return res.status(404).json({ error: 'File not found in index.', detail: meta });
+    }
+
+    const fileId   = parseInt(meta.id, 10);
+    const rawName  = meta.originalFilename || meta.title || urlHash;
+    const ext      = (meta.extension || '').replace(/^\./, '');
+    const filename = ext && !rawName.toLowerCase().endsWith('.' + ext)
+      ? rawName + '.' + ext
+      : rawName;
+    console.log(`[proxy] fileId=${fileId}  filename=${filename}`);
+
+    // ── 3. Register the download with the user's Designi JWT ──
+    const dlData = await invokeEdge('register-download', { file_id: fileId }, DESIGNI_TOKEN);
+
+    if (!dlData || dlData.error || dlData.message) {
+      console.error('[proxy] register-download error:', dlData);
+      const msg = (dlData && (dlData.error || dlData.message)) || 'register-download failed';
+      return res.status(403).json({ error: msg, detail: dlData });
+    }
+
+    // ── 4. Build the real download URL ──
+    const downloadUrl =
+      dlData.s3_download_url ||
+      dlData.download_url    ||
+      (dlData.shortUrl
+        ? `https://app.designi.com.br/${dlData.shortUrl}?token=${dlData.token || ''}`
+        : null);
+
+    if (!downloadUrl) {
+      console.error('[proxy] no download URL in response:', dlData);
+      return res.status(500).json({ error: 'No download URL returned.', detail: dlData });
+    }
+    console.log(`[proxy] downloadUrl=${downloadUrl.slice(0, 80)}…`);
+
+    // ── 5. Fetch the actual file bytes ──
+    const fileResp = await fetch(downloadUrl, {
+      headers: {
+        ...UA,
+        'Authorization': `Bearer ${DESIGNI_TOKEN}`,
+      },
+      redirect: 'follow',
+    });
+
+    if (!fileResp.ok) {
+      return res.status(fileResp.status).json({
+        error:  'File fetch failed.',
+        status: fileResp.status,
+        url:    downloadUrl.slice(0, 120),
+      });
+    }
+
+    const buffer = await fileResp.arrayBuffer();
+    console.log(`[proxy] fetched ${buffer.byteLength} bytes → serving as ZIP`);
+
+    // ── 6. Wrap in ZIP and return ──
+    return respondZip(res, buffer, dlData.file_name || filename);
+
   } catch (err) {
-    console.error('[proxy]', err.message);
-    return res.status(502).json({ error:'Proxy error: '+err.message });
+    console.error('[proxy] uncaught error:', err);
+    res.header('X-Error', String(err.message));
+    return res.status(500).json({ error: err.message });
   }
 });
 
-// ── SERVE FRONTEND STATIC FILES ──────────────────────────────────
-// index.html  → https://designidl-proxy.onrender.com/
-// admin-panel → https://designidl-proxy.onrender.com/admin-panel.html
-import { fileURLToPath } from 'url';
-import path from 'path';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static(__dirname));               // serves all .html files
-app.get('/', (_,res) => res.sendFile(path.join(__dirname, 'index.html')));
+// ── Health check ─────────────────────────────────────────────────
+app.get('/health', (_req, res) => res.json({ status: 'ok', version: '3.0' }));
 
-// ── HEALTH CHECK ─────────────────────────────────────────────────
-app.get('/health', (_,res) => res.json({ status:'ok', service:'designidl-proxy', v:'2.0' }));
+// ── Static files + SPA fallback ───────────────────────────────────
+app.use(express.static(__dirname));
+app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-app.listen(PORT, () => console.log(`[DesigniDL Proxy] Listening on port ${PORT}`));
+// ── Start ─────────────────────────────────────────────────────────
+app.listen(PORT, () => console.log(`DesigniDL proxy v3.0  →  http://localhost:${PORT}`));
