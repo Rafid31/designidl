@@ -345,22 +345,32 @@ tr:hover td{background:var(--surface2)}
 
     <!-- GENERATE TOKEN -->
     <div class="card" id="designiTokenCard">
-      <div class="card-title">🔑 Designi Account Token</div>
-      <p style="margin:0 0 12px;font-size:13px;opacity:.75">
-        Enter your Designi.com.br session token once. It is stored in this browser and sent
-        securely with every download request. Without it, downloads will fail.
+      <div class="card-title">🔑 Connect Designi Account</div>
+      <p style="margin:0 0 14px;font-size:13px;opacity:.75">
+        Log in with your <strong>Designi.com.br</strong> account below. Your session token will be
+        saved automatically — you only need to do this once (or when your session expires).
       </p>
-      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-        <div style="flex:1;min-width:220px">
-          <label class="field-label" for="designiTokenInput">Session Token (JWT)</label>
-          <input id="designiTokenInput" type="password" class="gen-input"
-            placeholder="eyJ..." autocomplete="off"
-            style="width:100%;font-family:monospace;font-size:12px"/>
+
+      <!-- Login form -->
+      <div id="designiLoginForm">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label class="field-label" for="designiEmail">Designi Email</label>
+            <input id="designiEmail" type="email" class="gen-input" placeholder="you@email.com" autocomplete="email" style="width:100%"/>
+          </div>
+          <div>
+            <label class="field-label" for="designiPassword">Password</label>
+            <input id="designiPassword" type="password" class="gen-input" placeholder="••••••••" autocomplete="current-password" style="width:100%"/>
+          </div>
         </div>
-        <button class="btn-primary" onclick="saveDesigniToken()" style="height:38px;padding:0 18px">Save Token</button>
-        <button class="btn-secondary" onclick="clearDesigniToken()" style="height:38px;padding:0 14px">Clear</button>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn-primary" onclick="loginDesigni()" id="designiLoginBtn" style="padding:0 22px;height:38px">Login to Designi</button>
+          <button class="btn-secondary" onclick="clearDesigniToken()" style="padding:0 14px;height:38px">Disconnect</button>
+          <span id="designiLoginSpinner" style="display:none;font-size:13px;opacity:.7">⏳ Logging in…</span>
+        </div>
       </div>
-      <div id="designiTokenStatus" style="margin-top:8px;font-size:12px;opacity:.7"></div>
+
+      <div id="designiTokenStatus" style="margin-top:10px;font-size:13px"></div>
     </div>
 
     <div class="card">
@@ -624,29 +634,112 @@ function revokeToken(id){
   toast('Revoked '+id+'.','twarn');
 }
 
-/* ── Designi account token (stored in cookie, shared with index.html) ── */
-function saveDesigniToken(){
-  const tok = document.getElementById('designiTokenInput').value.trim();
-  if (!tok) { toast('Enter a token first.','twarn'); return; }
-  setCookie('ddl_dt', tok, 365);
-  document.getElementById('designiTokenStatus').textContent = '✓ Token saved — expires in 365 days.';
-  document.getElementById('designiTokenInput').value = '';
-  toast('Designi token saved!','tok');
+/* ── Designi account login (Supabase auth → JWT stored in cookie) ── */
+const SUPA_URL  = 'https://soueuzuauddqhuojssek.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvdWV1enVhdWRkcWh1b2pzc2VrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0MzcwODAsImV4cCI6MjA4MjAxMzA4MH0.rrT9f6Y0igImXG-lQq72I7zwaOvHxCtCNtW6XkOyEAU';
+
+async function loginDesigni() {
+  const email    = document.getElementById('designiEmail').value.trim();
+  const password = document.getElementById('designiPassword').value;
+  const btn      = document.getElementById('designiLoginBtn');
+  const spinner  = document.getElementById('designiLoginSpinner');
+  const status   = document.getElementById('designiTokenStatus');
+
+  if (!email || !password) { toast('Enter your email and password.', 'twarn'); return; }
+
+  btn.disabled = true;
+  spinner.style.display = 'inline';
+  status.textContent = '';
+
+  try {
+    const resp = await fetch(
+      SUPA_URL + '/auth/v1/token?grant_type=password',
+      {
+        method: 'POST',
+        headers: {
+          'apikey':       SUPA_ANON,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      }
+    );
+    const data = await resp.json();
+
+    if (!resp.ok || !data.access_token) {
+      const msg = data.error_description || data.msg || data.error || 'Login failed';
+      status.textContent = '✗ ' + msg;
+      status.style.color = '#ef4444';
+      toast('Login failed: ' + msg, 'terr');
+      return;
+    }
+
+    // Save access token + expiry info
+    setCookie('ddl_dt', data.access_token, 30);   // 30-day cookie; token itself expires sooner
+    if (data.refresh_token) setCookie('ddl_dtr', data.refresh_token, 365);
+
+    document.getElementById('designiEmail').value    = '';
+    document.getElementById('designiPassword').value = '';
+    loadDesigniTokenStatus();
+  // Allow Enter key in Designi login fields
+  ['designiEmail','designiPassword'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key==='Enter') loginDesigni(); });
+  });
+    toast('Designi account connected! Downloads are ready.', 'tok');
+
+  } catch(e) {
+    status.textContent = '✗ Network error: ' + e.message;
+    status.style.color = '#ef4444';
+    toast('Network error. Check your connection.', 'terr');
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
 }
-function clearDesigniToken(){
+
+async function refreshDesigniToken() {
+  const rt = getCookie('ddl_dtr');
+  if (!rt) return false;
+  try {
+    const resp = await fetch(SUPA_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_ANON, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt }),
+    });
+    const data = await resp.json();
+    if (data.access_token) {
+      setCookie('ddl_dt', data.access_token, 30);
+      if (data.refresh_token) setCookie('ddl_dtr', data.refresh_token, 365);
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+function clearDesigniToken() {
   delCookie('ddl_dt');
-  document.getElementById('designiTokenStatus').textContent = 'Token cleared.';
-  toast('Designi token cleared.','twarn');
+  delCookie('ddl_dtr');
+  loadDesigniTokenStatus();
+  toast('Designi account disconnected.', 'twarn');
 }
-function loadDesigniTokenStatus(){
+
+function loadDesigniTokenStatus() {
   const tok = getCookie('ddl_dt');
   const el  = document.getElementById('designiTokenStatus');
+  if (!el) return;
   if (tok) {
-    el.textContent = '✓ Token is set (' + tok.slice(0,12) + '...). Downloads are ready.';
-    el.style.color = '#22c55e';
+    // Decode JWT to get email & expiry
+    try {
+      const payload = JSON.parse(atob(tok.split('.')[1]));
+      const email   = payload.email || payload.user_metadata?.email || 'account';
+      const exp     = payload.exp ? new Date(payload.exp * 1000) : null;
+      const expStr  = exp ? exp.toLocaleDateString() : 'unknown';
+      el.innerHTML  = '<span style="color:#22c55e">✓ Connected as <strong>' + email + '</strong> — session valid until ' + expStr + '</span>';
+    } catch(e) {
+      el.innerHTML = '<span style="color:#22c55e">✓ Designi token is set. Downloads are ready.</span>';
+    }
   } else {
-    el.textContent = '⚠ No token set — downloads will fail until you save one.';
-    el.style.color = '#f59e0b';
+    el.innerHTML = '<span style="color:#f59e0b">⚠ Not connected — enter your Designi email &amp; password above and click Login.</span>';
   }
 }
 
