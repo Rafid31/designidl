@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en"><head>
+<html lang="en">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="DesigniDL — Token-gated download portal for Designi files. Download PSD, PNG, SVG, AI, EPS, MP4, ZIP and more.">
 <title>DesigniDL — Designi File Downloader</title>
-<link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&amp;display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════
    DESIGN SYSTEM
@@ -326,19 +327,8 @@ main{max-width:760px;margin:0 auto;padding:24px 16px 80px}
   .stats-grid{grid-template-columns:1fr 1fr}
 }
 </style>
-<style id="antigravity-scroll-lock-style">
-  html:root body.antigravity-scroll-lock {
-    overflow: hidden !important;
-  }
-</style><style>
-  body::-webkit-scrollbar {
-    display: none;
-  }
-  html::-webkit-scrollbar {
-    display: none;
-  }
-</style></head>
-<body class="">
+</head>
+<body>
 
 <!-- ═══════════════════════════════════════
      LOGIN SCREEN
@@ -347,10 +337,10 @@ main{max-width:760px;margin:0 auto;padding:24px 16px 80px}
   <div class="login-box">
     <div class="login-brand">
       <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-        <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="2" fill="none"></circle>
-        <line x1="18" y1="8" x2="18" y2="23" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></line>
-        <polyline points="12,19 18,26 24,19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></polyline>
-        <line x1="11" y1="30" x2="25" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+        <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="2" fill="none"/>
+        <line x1="18" y1="8" x2="18" y2="23" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <polyline points="12,19 18,26 24,19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="11" y1="30" x2="25" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <span>DesigniDL</span>
     </div>
@@ -369,10 +359,10 @@ main{max-width:760px;margin:0 auto;padding:24px 16px 80px}
   <header class="app-header">
     <div class="brand">
       <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-        <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="2" fill="none"></circle>
-        <line x1="18" y1="8" x2="18" y2="23" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></line>
-        <polyline points="12,19 18,26 24,19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></polyline>
-        <line x1="11" y1="30" x2="25" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+        <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="2" fill="none"/>
+        <line x1="18" y1="8" x2="18" y2="23" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <polyline points="12,19 18,26 24,19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="11" y1="30" x2="25" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <span class="brand-name">DesigniDL</span>
       <span id="planBadge" class="plan-badge">Active</span>
@@ -380,12 +370,12 @@ main{max-width:760px;margin:0 auto;padding:24px 16px 80px}
     <div class="header-right">
       <button id="themeBtn" class="btn-icon" title="Toggle theme" aria-label="Toggle theme">
         <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
       </button>
       <button id="logoutBtn" class="btn-icon" title="Logout" aria-label="Logout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
         </svg>
       </button>
     </div>
@@ -446,7 +436,7 @@ main{max-width:760px;margin:0 auto;padding:24px 16px 80px}
       <ul class="history-list" id="historyList"></ul>
       <div class="empty-state" id="emptyHistory">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
         <p>Your downloads will appear here</p>
       </div>
@@ -525,19 +515,22 @@ function getTokenPlan(tokenId) {
 let S = null; // session object
 
 function saveSession() {
-  // Trim history to max 150 entries before saving
-  if (S && S.history && S.history.length > 150) {
-    S.history = S.history.slice(-150);
-  }
-  if (S) {
-    try {
-      setCookie('ddl_s', JSON.stringify(S), 60);
-    } catch (e) {
-      // Cookie too large — trim history more aggressively
-      S.history = S.history ? S.history.slice(-30) : [];
-      setCookie('ddl_s', JSON.stringify(S), 60);
+  if (!S) return;
+  // IMPORTANT: document.cookie = ... NEVER throws — it silently discards the
+  // write if the value exceeds ~4 KB.  We must verify the write succeeded by
+  // reading the cookie back.  Progressively trim history until it fits.
+  const hist = S.history || [];
+  const cuts = [hist.length, 50, 20, 10, 5, 0];
+  for (const n of cuts) {
+    const payload = JSON.stringify({ ...S, history: hist.slice(-n) });
+    setCookie('ddl_s', payload, 60);
+    if (getCookie('ddl_s')) {           // write was accepted by the browser
+      if (n < hist.length) S.history = hist.slice(-n);   // sync back
+      return;
     }
   }
+  // Absolute last resort — session without history
+  setCookie('ddl_s', JSON.stringify({ ...S, history: [] }), 60);
 }
 
 function loadSession() {
@@ -730,17 +723,27 @@ async function downloadFile(url) {
   addHistory(url, 'loading', ext);
   toast('Fetching file via proxy…', 'tinfo');
 
-  /* ── Strategy 1: Netlify Proxy (server-side, bypasses CORS) ── */
+  /* ── Strategy 1: Render.com Proxy (server-side, CORS bypass + ZIP wrap) ── */
   try {
-    const proxyUrl = '/.netlify/functions/proxy?url=' + encodeURIComponent(url);
-    const resp = await fetch(proxyUrl);
-    if (resp.status === 413) throw new Error('FILE_TOO_LARGE');
+    const PROXY = 'https://designidl-proxy.onrender.com/proxy';
+    const resp = await fetch(PROXY + '?url=' + encodeURIComponent(url));
     if (!resp.ok) throw new Error('PROXY_HTTP_' + resp.status);
+
+    // Proxy always returns a ZIP — prefer X-Filename, then Content-Disposition
+    let finalName = fname.replace(/\.[^.]+$/, '') + '.zip';
+    const xfn = resp.headers.get('x-filename');
+    if (xfn) finalName = xfn;
+    const cd = resp.headers.get('content-disposition');
+    if (cd) {
+      const match = cd.match(/filename[^;=\n]*=(['"]?)([^'";\n]+)\1/);
+      if (match) finalName = match[2];
+    }
+
     const blob = await resp.blob();
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = blobUrl;
-    a.download = fname;
+    a.download = finalName;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -748,7 +751,7 @@ async function downloadFile(url) {
     updateLastHistory('ok');
     recordUsage();
     renderStats();
-    toast('✅ Downloaded: ' + fname, 'tok');
+    toast('✅ Downloaded: ' + finalName, 'tok');
     return true;
   } catch (proxyErr) {
     console.warn('[DesigniDL] Proxy failed:', proxyErr.message);
@@ -758,11 +761,29 @@ async function downloadFile(url) {
   try {
     const resp = await fetch(url, { mode: 'cors' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    
+    let finalName = fname;
+    const cd = resp.headers.get('content-disposition');
+    if (cd) {
+      const match = cd.match(/filename[^;=\n]*=(['"]?)([^'";\n]+)\1/);
+      if (match) finalName = match[2];
+    }
+    // Simple MIME type to extension fallback
+    if (finalName.indexOf('.') === -1) {
+       const ct = resp.headers.get('content-type') || '';
+       if (ct.includes('png')) finalName += '.png';
+       else if (ct.includes('jpeg') || ct.includes('jpg')) finalName += '.jpg';
+       else if (ct.includes('zip')) finalName += '.zip';
+       else if (ct.includes('mp4')) finalName += '.mp4';
+       else if (ct.includes('pdf')) finalName += '.pdf';
+       else finalName += '.psd'; // Default fallback
+    }
+
     const blob = await resp.blob();
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = blobUrl;
-    a.download = fname;
+    a.download = finalName;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -770,7 +791,7 @@ async function downloadFile(url) {
     updateLastHistory('ok');
     recordUsage();
     renderStats();
-    toast('✅ Downloaded: ' + fname, 'tok');
+    toast('✅ Downloaded: ' + finalName, 'tok');
     return true;
   } catch (directErr) {
     console.warn('[DesigniDL] Direct fetch failed:', directErr.message);
@@ -926,6 +947,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
-
-
-<div id="preact-border-shadow-host" popover="manual" style="border: none; padding: 0px; margin: 0px; inset: 0px; position: fixed; width: 100vw; height: 100vh; background: transparent; pointer-events: none;"></div></body></html>
+</body>
+</html>
