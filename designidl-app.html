@@ -1,0 +1,907 @@
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="DesigniDL — Token-gated download portal for Designi files. Download PSD, PNG, SVG, AI, EPS, MP4, ZIP and more.">
+<title>DesigniDL — Designi File Downloader</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&amp;display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   DESIGN SYSTEM
+   ═══════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0f0f0d;
+  --surface:#161614;
+  --surface2:#1c1b19;
+  --surface3:#222220;
+  --text:#d4d3d0;
+  --muted:#7a7876;
+  --faint:#4a4947;
+  --primary:#01696f;
+  --primary-h:#0c4e54;
+  --error:#c94f6d;
+  --success:#5a9e3a;
+  --warning:#c47b20;
+  --border:rgba(255,255,255,0.08);
+  --r:10px;
+  --r-lg:16px;
+  --r-xl:22px;
+  --rf:9999px;
+  --shadow:0 4px 20px rgba(0,0,0,0.45);
+  --ease:180ms cubic-bezier(0.16,1,0.3,1);
+  --font:'Satoshi',system-ui,-apple-system,sans-serif;
+}
+
+html.light{
+  --bg:#f4f3f0;
+  --surface:#ffffff;
+  --surface2:#f0efec;
+  --surface3:#e8e7e4;
+  --text:#1a1a18;
+  --muted:#6b6966;
+  --faint:#a8a6a3;
+  --border:rgba(0,0,0,0.09);
+  --shadow:0 4px 20px rgba(0,0,0,0.08);
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important}
+}
+
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ═══════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════ */
+.app-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:14px 24px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{color:var(--primary);flex-shrink:0}
+.brand-name{font-weight:700;font-size:18px;letter-spacing:-0.3px}
+.header-right{display:flex;align-items:center;gap:10px}
+.plan-badge{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;
+  padding:4px 10px;border-radius:var(--rf);
+  background:rgba(1,105,111,0.15);color:var(--primary);
+}
+.plan-badge.expiring{background:rgba(196,123,32,0.15);color:var(--warning)}
+.plan-badge.expired{background:rgba(201,79,109,0.15);color:var(--error)}
+
+.btn-icon{
+  width:36px;height:36px;border:none;border-radius:var(--rf);
+  background:var(--surface2);color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background var(--ease),color var(--ease);
+}
+.btn-icon:hover{background:var(--surface3);color:var(--text)}
+.btn-icon:active{transform:scale(0.97)}
+.btn-icon svg{width:18px;height:18px}
+
+main{max-width:760px;margin:0 auto;padding:24px 16px 80px}
+
+/* ═══════════════════════════════════════
+   CARDS
+   ═══════════════════════════════════════ */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:24px;
+  margin-bottom:20px;
+  box-shadow:var(--shadow);
+}
+.card-title{font-size:15px;font-weight:700;margin-bottom:16px;letter-spacing:-0.2px}
+
+/* ═══════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  height:44px;padding:0 22px;border:none;border-radius:var(--r);
+  font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;
+  transition:background var(--ease),transform var(--ease);
+  white-space:nowrap;
+}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-h)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.btn-ghost{background:var(--surface2);color:var(--muted)}
+.btn-ghost:hover{background:var(--surface3);color:var(--text)}
+
+/* ═══════════════════════════════════════
+   INPUTS
+   ═══════════════════════════════════════ */
+.input,.textarea{
+  width:100%;height:44px;padding:0 14px;
+  background:var(--surface2);color:var(--text);
+  border:1px solid var(--border);border-radius:var(--r);
+  font-family:var(--font);font-size:14px;
+  transition:border-color var(--ease);
+  outline:none;
+}
+.input:focus,.textarea:focus{border-color:var(--primary)}
+.input::placeholder,.textarea::placeholder{color:var(--faint)}
+.textarea{height:auto;min-height:100px;padding:12px 14px;resize:vertical}
+
+/* ═══════════════════════════════════════
+   LOGIN SCREEN
+   ═══════════════════════════════════════ */
+.login-screen{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:24px;
+}
+.login-box{
+  width:100%;max-width:380px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-xl);padding:40px 32px;
+  box-shadow:var(--shadow);text-align:left;
+}
+.login-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.login-brand svg{color:var(--primary)}
+.login-brand span{font-size:22px;font-weight:700;letter-spacing:-0.3px}
+.login-sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+.login-label{font-size:13px;font-weight:600;margin-bottom:6px;display:block}
+.login-box .input{margin-bottom:16px;font-family:'SF Mono',SFMono-Regular,Consolas,monospace;letter-spacing:2px;text-align:center;font-size:16px}
+.login-box .btn{width:100%;margin-bottom:12px}
+.login-err{color:var(--error);font-size:13px;min-height:20px;margin-top:4px}
+
+/* ═══════════════════════════════════════
+   STATS GRID
+   ═══════════════════════════════════════ */
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;margin-bottom:20px;
+}
+.stat-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:18px 16px;
+  box-shadow:var(--shadow);
+}
+.stat-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:700;letter-spacing:-0.5px}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+.progress-track{
+  height:6px;background:var(--surface3);border-radius:var(--rf);
+  overflow:hidden;margin-top:8px;
+}
+.progress-fill{
+  height:100%;border-radius:var(--rf);
+  background:var(--primary);
+  transition:width 400ms ease,background 400ms ease;
+}
+.progress-fill.warn{background:var(--warning)}
+.progress-fill.crit{background:var(--error)}
+
+.expiry-line{display:flex;align-items:center;gap:8px;margin-top:4px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.status-dot.active{background:var(--success)}
+.status-dot.expiring{background:var(--warning)}
+.status-dot.expired{background:var(--error)}
+
+/* ═══════════════════════════════════════
+   DOWNLOAD INPUT ROW
+   ═══════════════════════════════════════ */
+.dl-row{display:flex;gap:10px}
+.dl-row .input{flex:1}
+@media(max-width:500px){
+  .dl-row{flex-direction:column}
+  .dl-row .btn{width:100%}
+}
+
+/* ═══════════════════════════════════════
+   BATCH
+   ═══════════════════════════════════════ */
+.batch-progress{
+  margin-top:14px;display:none;
+}
+.batch-progress.active{display:block}
+.batch-info{font-size:13px;color:var(--muted);margin-bottom:6px}
+
+/* ═══════════════════════════════════════
+   HISTORY LIST
+   ═══════════════════════════════════════ */
+.history-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.history-list{list-style:none}
+.history-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 0;
+  border-bottom:1px solid var(--border);
+  animation:slideIn 280ms ease;
+}
+.history-item:last-child{border-bottom:none}
+
+@keyframes slideIn{
+  from{opacity:0;transform:translateY(-8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.h-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.h-dot.ok{background:var(--success)}
+.h-dot.cors{background:var(--warning)}
+.h-dot.err{background:var(--error)}
+.h-dot.loading{background:#4a90d9;animation:pulse 1.2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.h-type{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;
+  padding:2px 7px;border-radius:var(--rf);
+  background:var(--surface3);color:var(--muted);
+  flex-shrink:0;
+}
+.h-type.psd{background:rgba(0,102,204,0.15);color:#4a9af5}
+.h-type.png{background:rgba(34,134,58,0.15);color:#5cb85c}
+.h-type.svg{background:rgba(224,108,0,0.15);color:#e06c00}
+.h-type.jpg,.h-type.jpeg{background:rgba(170,34,34,0.15);color:#d05050}
+.h-type.ai{background:rgba(255,104,0,0.15);color:#ff6800}
+.h-type.eps{background:rgba(136,68,0,0.15);color:#b08040}
+.h-type.mp4,.h-type.mov{background:rgba(139,68,204,0.15);color:#a06cd5}
+.h-type.zip,.h-type.rar{background:rgba(85,102,119,0.15);color:#8899aa}
+.h-type.pdf{background:rgba(204,34,34,0.15);color:#e04040}
+.h-type.webp,.h-type.gif{background:rgba(100,140,60,0.15);color:#80b050}
+
+.h-url{
+  flex:1;min-width:0;
+  font-size:13px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.h-time{font-size:11px;color:var(--faint);flex-shrink:0}
+.h-open{
+  font-size:11px;font-weight:600;color:var(--warning);
+  text-decoration:none;flex-shrink:0;
+}
+.h-open:hover{text-decoration:underline}
+
+.empty-state{
+  text-align:center;padding:48px 16px;color:var(--faint);
+}
+.empty-state svg{margin-bottom:12px;opacity:0.4}
+.empty-state p{font-size:13px}
+
+/* ═══════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════ */
+.toast-wrap{
+  position:fixed;bottom:20px;right:20px;z-index:9999;
+  display:flex;flex-direction:column;gap:8px;
+  pointer-events:none;
+}
+.toast{
+  pointer-events:auto;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px 18px;
+  font-size:13px;box-shadow:var(--shadow);
+  opacity:0;transform:translateX(30px);
+  transition:opacity 250ms ease,transform 250ms ease;
+  max-width:340px;
+}
+.toast.show{opacity:1;transform:translateX(0)}
+.toast.tok{border-left:3px solid var(--success)}
+.toast.terr{border-left:3px solid var(--error)}
+.toast.twarn{border-left:3px solid var(--warning)}
+
+/* ═══════════════════════════════════════
+   SPINNER
+   ═══════════════════════════════════════ */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{
+  width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);
+  border-top-color:#fff;border-radius:50%;
+  animation:spin 0.6s linear infinite;
+  display:inline-block;
+}
+.btn.loading .spinner{margin-right:6px}
+
+/* ═══════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════ */
+@media(max-width:500px){
+  .app-header{padding:12px 14px}
+  main{padding:16px 10px 80px}
+  .card{padding:18px 14px}
+  .login-box{padding:28px 20px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+<style id="antigravity-scroll-lock-style">
+  html:root body.antigravity-scroll-lock {
+    overflow: hidden !important;
+  }
+</style><style>
+  body::-webkit-scrollbar {
+    display: none;
+  }
+  html::-webkit-scrollbar {
+    display: none;
+  }
+</style></head>
+<body class="">
+
+<!-- ═══════════════════════════════════════
+     LOGIN SCREEN
+     ═══════════════════════════════════════ -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <div class="login-brand">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="2" fill="none"></circle>
+        <line x1="18" y1="8" x2="18" y2="23" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></line>
+        <polyline points="12,19 18,26 24,19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <line x1="11" y1="30" x2="25" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+      </svg>
+      <span>DesigniDL</span>
+    </div>
+    <p class="login-sub">Enter your access token to start downloading.</p>
+    <label class="login-label" for="tokenInput">Access Token</label>
+    <input id="tokenInput" class="input" type="text" placeholder="XXXX-XXXX-XXXX" maxlength="14" autocomplete="off" spellcheck="false">
+    <button id="loginBtn" class="btn btn-primary" type="button">Activate Token</button>
+    <div id="loginErr" class="login-err"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     APP (hidden until login)
+     ═══════════════════════════════════════ -->
+<div id="appWrap" style="display:none">
+  <header class="app-header">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+        <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="2" fill="none"></circle>
+        <line x1="18" y1="8" x2="18" y2="23" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></line>
+        <polyline points="12,19 18,26 24,19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <line x1="11" y1="30" x2="25" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+      </svg>
+      <span class="brand-name">DesigniDL</span>
+      <span id="planBadge" class="plan-badge">Active</span>
+    </div>
+    <div class="header-right">
+      <button id="themeBtn" class="btn-icon" title="Toggle theme" aria-label="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+      <button id="logoutBtn" class="btn-icon" title="Logout" aria-label="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- STATS -->
+    <section class="stats-grid" id="statsGrid">
+      <div class="stat-box">
+        <div class="stat-label">Used Today</div>
+        <div class="stat-value" id="statUsedToday">0</div>
+        <div class="progress-track"><div class="progress-fill" id="dailyBar" style="width:0%"></div></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Remaining Today</div>
+        <div class="stat-value" id="statRemaining">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Total This Month</div>
+        <div class="stat-value" id="statMonthly">0</div>
+        <div class="progress-track"><div class="progress-fill" id="monthlyBar" style="width:0%"></div></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Days Left</div>
+        <div class="stat-value" id="statDays">—</div>
+        <div class="stat-sub" id="expiryLine"></div>
+      </div>
+    </section>
+
+    <!-- SINGLE DOWNLOAD -->
+    <div class="card" id="singleCard">
+      <div class="card-title">Download File</div>
+      <div class="dl-row">
+        <input id="urlInput" class="input" type="url" placeholder="Paste Designi file URL here…" autocomplete="off">
+        <button id="dlBtn" class="btn btn-primary" type="button">Download</button>
+      </div>
+    </div>
+
+    <!-- BATCH DOWNLOAD -->
+    <div class="card" id="batchCard">
+      <div class="card-title">Batch Download</div>
+      <textarea id="batchInput" class="textarea" placeholder="Paste multiple URLs, one per line…" rows="4"></textarea>
+      <div style="margin-top:12px">
+        <button id="batchBtn" class="btn btn-primary" type="button">Download All</button>
+      </div>
+      <div class="batch-progress" id="batchProgress">
+        <div class="batch-info" id="batchInfo">0 / 0</div>
+        <div class="progress-track"><div class="progress-fill" id="batchBar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="card" id="historyCard">
+      <div class="history-header">
+        <div class="card-title" style="margin-bottom:0">Download History</div>
+        <button id="clearHistBtn" class="btn btn-ghost" style="height:32px;padding:0 12px;font-size:12px">Clear All</button>
+      </div>
+      <ul class="history-list" id="historyList"></ul>
+      <div class="empty-state" id="emptyHistory">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <p>Your downloads will appear here</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ═══════════════════════════════════════
+   TOKEN DATABASE
+   ═══════════════════════════════════════
+   Hardcoded tokens + dynamic tokens from admin panel (shared cookie).
+   In production: fetch this from /api/tokens on page load.
+*/
+const TOKEN_DB_HARDCODED = {
+  'DEMO-1234-ABCD': { dailyLimit: 20, monthlyLimit: 600, days: 30 },
+  'VIP-9999-ZZZZ':  { dailyLimit: 50, monthlyLimit: 1500, days: 30 },
+  'TEST-0000-TEST': { dailyLimit: 5, monthlyLimit: 150, days: 30 }
+};
+
+/* ═══════════════════════════════════════
+   COOKIE HELPERS — NO localStorage
+   ═══════════════════════════════════════ */
+function setCookie(name, val, days) {
+  const d = new Date();
+  d.setTime(d.getTime() + days * 86400000);
+  document.cookie = name + '=' + encodeURIComponent(val) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+}
+function getCookie(name) {
+  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? decodeURIComponent(v.pop()) : null;
+}
+function delCookie(name) {
+  document.cookie = name + '=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax';
+}
+
+/* ═══════════════════════════════════════
+   MERGED TOKEN LOOKUP
+   ═══════════════════════════════════════
+   Reads hardcoded TOKEN_DB + tokens saved by admin panel in ddl_tokens cookie.
+   Admin tokens cookie format: JSON array of { id, days, dailyLimit, expiresAt }
+*/
+function getTokenPlan(tokenId) {
+  const id = tokenId.toUpperCase();
+
+  // 1. Check hardcoded DB first
+  if (TOKEN_DB_HARDCODED[id]) return TOKEN_DB_HARDCODED[id];
+
+  // 2. Check shared admin cookie (ddl_tokens)
+  try {
+    const raw = getCookie('ddl_tokens');
+    if (raw) {
+      const adminTokens = JSON.parse(raw);
+      const found = adminTokens.find(t => t.id === id);
+      if (found) {
+        // Check if the admin token itself hasn't expired
+        if (found.expiresAt && Date.now() > found.expiresAt) return null;
+        return {
+          dailyLimit: found.dailyLimit || 20,
+          monthlyLimit: (found.dailyLimit || 20) * 30,
+          days: found.days || 30
+        };
+      }
+    }
+  } catch(e) { /* ignore parse errors */ }
+
+  return null; // token not found anywhere
+}
+
+/* ═══════════════════════════════════════
+   SESSION STATE
+   ═══════════════════════════════════════ */
+let S = null; // session object
+
+function saveSession() {
+  // Trim history to max 150 entries before saving
+  if (S && S.history && S.history.length > 150) {
+    S.history = S.history.slice(-150);
+  }
+  if (S) {
+    try {
+      setCookie('ddl_s', JSON.stringify(S), 60);
+    } catch (e) {
+      // Cookie too large — trim history more aggressively
+      S.history = S.history ? S.history.slice(-30) : [];
+      setCookie('ddl_s', JSON.stringify(S), 60);
+    }
+  }
+}
+
+function loadSession() {
+  const raw = getCookie('ddl_s');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+/* ═══════════════════════════════════════
+   DATE HELPERS
+   ═══════════════════════════════════════ */
+function dayKey() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate(); }
+function monKey() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth()+1); }
+function nowHM() { const d = new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+
+/* ═══════════════════════════════════════
+   USAGE
+   ═══════════════════════════════════════ */
+function todayUsage() { return (S && S.usage && S.usage[dayKey()]) || 0; }
+function monthUsage() { return (S && S.usage && S.usage[monKey()]) || 0; }
+function canDownload() {
+  if (!S) return false;
+  if (Date.now() > S.expiresAt) return false;
+  if (todayUsage() >= S.dailyLimit) return false;
+  if (monthUsage() >= S.monthlyLimit) return false;
+  return true;
+}
+function recordUsage() {
+  if (!S.usage) S.usage = {};
+  const dk = dayKey(), mk = monKey();
+  S.usage[dk] = (S.usage[dk] || 0) + 1;
+  S.usage[mk] = (S.usage[mk] || 0) + 1;
+  saveSession();
+}
+
+/* ═══════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════ */
+function toast(msg, type) {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 3500);
+}
+
+/* ═══════════════════════════════════════
+   FILE EXTENSION DETECTION
+   ═══════════════════════════════════════ */
+function getExt(url) {
+  const m = url.match(/\.([a-z0-9]{2,5})(\?|#|$)/i);
+  return m ? m[1].toLowerCase() : '?';
+}
+function getFilename(url) {
+  try {
+    const p = new URL(url).pathname;
+    return p.split('/').pop() || 'download';
+  } catch { return 'download'; }
+}
+
+/* ═══════════════════════════════════════
+   THEME TOGGLE
+   ═══════════════════════════════════════ */
+const moonSVG = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+const sunSVG = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+
+function setTheme(light) {
+  document.documentElement.classList.toggle('light', light);
+  const icon = document.getElementById('themeIcon');
+  icon.innerHTML = light ? moonSVG : sunSVG;
+  setCookie('ddl_theme', light ? 'light' : 'dark', 365);
+}
+
+/* ═══════════════════════════════════════
+   UI RENDERING
+   ═══════════════════════════════════════ */
+function renderStats() {
+  if (!S) return;
+  const used = todayUsage();
+  const remaining = Math.max(0, S.dailyLimit - used);
+  const pctDay = Math.min(100, (used / S.dailyLimit) * 100);
+  const mo = monthUsage();
+  const pctMo = Math.min(100, (mo / S.monthlyLimit) * 100);
+  const daysLeft = Math.max(0, Math.ceil((S.expiresAt - Date.now()) / 86400000));
+  const expDate = new Date(S.expiresAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+
+  document.getElementById('statUsedToday').textContent = used;
+  document.getElementById('statRemaining').textContent = remaining;
+  document.getElementById('statMonthly').textContent = mo;
+  document.getElementById('statDays').textContent = daysLeft;
+
+  const dailyBar = document.getElementById('dailyBar');
+  dailyBar.style.width = pctDay + '%';
+  dailyBar.className = 'progress-fill' + (pctDay >= 90 ? ' crit' : pctDay >= 70 ? ' warn' : '');
+
+  const monthlyBar = document.getElementById('monthlyBar');
+  monthlyBar.style.width = pctMo + '%';
+  monthlyBar.className = 'progress-fill' + (pctMo >= 90 ? ' crit' : pctMo >= 70 ? ' warn' : '');
+
+  const badge = document.getElementById('planBadge');
+  const expiryLine = document.getElementById('expiryLine');
+  if (daysLeft <= 0) {
+    badge.textContent = 'Expired';
+    badge.className = 'plan-badge expired';
+    expiryLine.innerHTML = '<span class="status-dot expired"></span> Expired on ' + expDate;
+  } else if (daysLeft <= 5) {
+    badge.textContent = '⚠ Expiring Soon';
+    badge.className = 'plan-badge expiring';
+    expiryLine.innerHTML = '<span class="status-dot expiring"></span> Expires ' + expDate;
+  } else {
+    badge.textContent = 'Active ✓';
+    badge.className = 'plan-badge';
+    expiryLine.innerHTML = '<span class="status-dot active"></span> Expires ' + expDate;
+  }
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const empty = document.getElementById('emptyHistory');
+  const items = (S && S.history) ? S.history : [];
+  if (items.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  // Render newest first
+  list.innerHTML = items.slice().reverse().map(h => {
+    const ext = h.type || '?';
+    const extClass = ext.replace(/[^a-z]/gi, '').toLowerCase();
+    let extra = '';
+    if (h.status === 'cors') {
+      extra = `<a class="h-open" href="${escHtml(h.url)}" target="_blank" rel="noopener noreferrer">Open ↗</a>`;
+    }
+    return `<li class="history-item">
+      <span class="h-dot ${h.status}"></span>
+      <span class="h-type ${extClass}">${ext.toUpperCase()}</span>
+      <span class="h-url" title="${escHtml(h.url)}">${escHtml(h.url)}</span>
+      ${extra}
+      <span class="h-time">${h.time}</span>
+    </li>`;
+  }).join('');
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ═══════════════════════════════════════
+   HISTORY MANAGEMENT
+   ═══════════════════════════════════════ */
+function addHistory(url, status, ext) {
+  if (!S.history) S.history = [];
+  S.history.push({ url, status, type: ext || getExt(url), time: nowHM() });
+  if (S.history.length > 150) S.history = S.history.slice(-150);
+  saveSession();
+  renderHistory();
+}
+function updateLastHistory(status) {
+  if (S.history && S.history.length > 0) {
+    S.history[S.history.length - 1].status = status;
+    saveSession();
+    renderHistory();
+  }
+}
+
+/* ═══════════════════════════════════════
+   DOWNLOAD ENGINE
+   ═══════════════════════════════════════ */
+async function downloadFile(url) {
+  url = url.trim();
+  if (!url) return;
+
+  if (!canDownload()) {
+    if (Date.now() > S.expiresAt) {
+      toast('Plan expired. Contact your provider.', 'terr');
+    } else if (todayUsage() >= S.dailyLimit) {
+      toast('Daily download limit reached.', 'twarn');
+    } else if (monthUsage() >= S.monthlyLimit) {
+      toast('Monthly download limit reached.', 'twarn');
+    }
+    return false;
+  }
+
+  const ext = getExt(url);
+  const fname = getFilename(url);
+  addHistory(url, 'loading', ext);
+
+  try {
+    const resp = await fetch(url, { mode: 'cors', credentials: 'include' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+    updateLastHistory('ok');
+    recordUsage();
+    renderStats();
+    toast('Downloaded: ' + fname, 'tok');
+    return true;
+  } catch (err) {
+    if (err instanceof TypeError || err.message.includes('CORS') || err.message.includes('Failed to fetch')) {
+      updateLastHistory('cors');
+      toast('CORS blocked — use "Open ↗" to save manually.', 'twarn');
+    } else {
+      updateLastHistory('err');
+      toast('Download failed: ' + err.message, 'terr');
+    }
+    // Still count as an attempt if CORS — recordUsage handled only on success
+    return false;
+  }
+}
+
+/* ═══════════════════════════════════════
+   LOGIN LOGIC
+   ═══════════════════════════════════════
+   Checks both hardcoded TOKEN_DB and admin-generated tokens (ddl_tokens cookie).
+*/
+function activateToken(tokenId) {
+  const plan = getTokenPlan(tokenId.toUpperCase());
+  if (!plan) return false;
+  const now = Date.now();
+  S = {
+    token: tokenId.toUpperCase(),
+    dailyLimit: plan.dailyLimit,
+    monthlyLimit: plan.monthlyLimit,
+    activatedAt: now,
+    expiresAt: now + plan.days * 86400000,
+    usage: {},
+    history: []
+  };
+  saveSession();
+  return true;
+}
+
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appWrap').style.display = '';
+  renderStats();
+  renderHistory();
+}
+function showLogin() {
+  document.getElementById('loginScreen').style.display = '';
+  document.getElementById('appWrap').style.display = 'none';
+}
+
+/* ═══════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Theme
+  const savedTheme = getCookie('ddl_theme');
+  if (savedTheme === 'light') setTheme(true);
+
+  // Auto-restore session
+  const saved = loadSession();
+  if (saved && saved.token) {
+    if (Date.now() > saved.expiresAt) {
+      S = saved;
+      showApp();
+      toast('Plan expired. Contact your provider.', 'terr');
+    } else {
+      S = saved;
+      showApp();
+    }
+  } else {
+    showLogin();
+  }
+
+  // Login button
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    const val = document.getElementById('tokenInput').value.trim().toUpperCase();
+    const errEl = document.getElementById('loginErr');
+    if (!val) { errEl.textContent = 'Please enter a token.'; return; }
+    if (activateToken(val)) {
+      errEl.textContent = '';
+      showApp();
+      toast('Token activated! Welcome.', 'tok');
+    } else {
+      errEl.textContent = 'Invalid token. Check and try again.';
+    }
+  });
+
+  // Enter key on token input
+  document.getElementById('tokenInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('loginBtn').click();
+  });
+
+  // Logout
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    S = null;
+    delCookie('ddl_s');
+    showLogin();
+    toast('Logged out.', 'twarn');
+  });
+
+  // Theme toggle
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    setTheme(!document.documentElement.classList.contains('light'));
+  });
+
+  // Single download
+  document.getElementById('dlBtn').addEventListener('click', async () => {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { toast('Paste a URL first.', 'twarn'); return; }
+    const btn = document.getElementById('dlBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Downloading…';
+    await downloadFile(url);
+    btn.disabled = false;
+    btn.textContent = 'Download';
+  });
+
+  // Enter key on URL input
+  document.getElementById('urlInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('dlBtn').click();
+  });
+
+  // Batch download
+  document.getElementById('batchBtn').addEventListener('click', async () => {
+    const raw = document.getElementById('batchInput').value.trim();
+    if (!raw) { toast('Paste URLs first.', 'twarn'); return; }
+    const urls = raw.split('\n').map(u => u.trim()).filter(Boolean);
+    if (urls.length === 0) return;
+
+    const btn = document.getElementById('batchBtn');
+    const prog = document.getElementById('batchProgress');
+    const info = document.getElementById('batchInfo');
+    const bar = document.getElementById('batchBar');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Processing…';
+    prog.classList.add('active');
+
+    for (let i = 0; i < urls.length; i++) {
+      if (!canDownload()) {
+        toast('Limit reached — stopped batch at ' + (i) + '/' + urls.length, 'twarn');
+        break;
+      }
+      info.textContent = (i + 1) + ' / ' + urls.length + ' — ' + getFilename(urls[i]);
+      bar.style.width = ((i + 1) / urls.length * 100) + '%';
+      await downloadFile(urls[i]);
+      if (i < urls.length - 1) await new Promise(r => setTimeout(r, 900));
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Download All';
+    info.textContent = 'Done!';
+    setTimeout(() => prog.classList.remove('active'), 3000);
+  });
+
+  // Clear history
+  document.getElementById('clearHistBtn').addEventListener('click', () => {
+    if (S) { S.history = []; saveSession(); renderHistory(); }
+  });
+});
+</script>
+
+
+<div id="preact-border-shadow-host" popover="manual" style="border: none; padding: 0px; margin: 0px; inset: 0px; position: fixed; width: 100vw; height: 100vh; background: transparent; pointer-events: none;"></div></body></html>
