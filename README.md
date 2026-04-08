@@ -1,0 +1,3 @@
+# DesigniDL — Token-Gated Download Portal
+
+**DesigniDL** is a static, token-based download portal for [Designi](https://designi.com.br) files...
