@@ -190,8 +190,16 @@ app.get('/proxy', async (req, res) => {
   }
 });
 
-// ── HEALTH / ROOT ─────────────────────────────────────────────────
+// ── SERVE FRONTEND STATIC FILES ──────────────────────────────────
+// index.html  → https://designidl-proxy.onrender.com/
+// admin-panel → https://designidl-proxy.onrender.com/admin-panel.html
+import { fileURLToPath } from 'url';
+import path from 'path';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(express.static(__dirname));               // serves all .html files
+app.get('/', (_,res) => res.sendFile(path.join(__dirname, 'index.html')));
+
+// ── HEALTH CHECK ─────────────────────────────────────────────────
 app.get('/health', (_,res) => res.json({ status:'ok', service:'designidl-proxy', v:'2.0' }));
-app.get('/',       (_,res) => res.json({ service:'DesigniDL Proxy', endpoints:['/proxy?url=','/health'] }));
 
 app.listen(PORT, () => console.log(`[DesigniDL Proxy] Listening on port ${PORT}`));
