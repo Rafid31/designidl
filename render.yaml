@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: designidl-proxy
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.mjs
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
