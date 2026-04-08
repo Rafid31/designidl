@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -707,7 +708,7 @@ function updateLastHistory(status) {
 }
 
 /* ═══════════════════════════════════════
-   DOWNLOAD ENGINE
+   DOWNLOAD ENGINE (with CORS proxy bypass)
    ═══════════════════════════════════════ */
 async function downloadFile(url) {
   url = url.trim();
@@ -727,9 +728,35 @@ async function downloadFile(url) {
   const ext = getExt(url);
   const fname = getFilename(url);
   addHistory(url, 'loading', ext);
+  toast('Fetching file via proxy…', 'tinfo');
 
+  /* ── Strategy 1: Netlify Proxy (server-side, bypasses CORS) ── */
   try {
-    const resp = await fetch(url, { mode: 'cors', credentials: 'include' });
+    const proxyUrl = '/.netlify/functions/proxy?url=' + encodeURIComponent(url);
+    const resp = await fetch(proxyUrl);
+    if (resp.status === 413) throw new Error('FILE_TOO_LARGE');
+    if (!resp.ok) throw new Error('PROXY_HTTP_' + resp.status);
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+    updateLastHistory('ok');
+    recordUsage();
+    renderStats();
+    toast('✅ Downloaded: ' + fname, 'tok');
+    return true;
+  } catch (proxyErr) {
+    console.warn('[DesigniDL] Proxy failed:', proxyErr.message);
+  }
+
+  /* ── Strategy 2: Direct fetch (works when CORS is allowed) ── */
+  try {
+    const resp = await fetch(url, { mode: 'cors' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const blob = await resp.blob();
     const blobUrl = URL.createObjectURL(blob);
@@ -743,19 +770,16 @@ async function downloadFile(url) {
     updateLastHistory('ok');
     recordUsage();
     renderStats();
-    toast('Downloaded: ' + fname, 'tok');
+    toast('✅ Downloaded: ' + fname, 'tok');
     return true;
-  } catch (err) {
-    if (err instanceof TypeError || err.message.includes('CORS') || err.message.includes('Failed to fetch')) {
-      updateLastHistory('cors');
-      toast('CORS blocked — use "Open ↗" to save manually.', 'twarn');
-    } else {
-      updateLastHistory('err');
-      toast('Download failed: ' + err.message, 'terr');
-    }
-    // Still count as an attempt if CORS — recordUsage handled only on success
-    return false;
+  } catch (directErr) {
+    console.warn('[DesigniDL] Direct fetch failed:', directErr.message);
   }
+
+  /* ── Strategy 3: Fallback ── */
+  updateLastHistory('cors');
+  toast('Could not auto-download. Click "Open ↗" to save manually.', 'twarn');
+  return false;
 }
 
 /* ═══════════════════════════════════════
