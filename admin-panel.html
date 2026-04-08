@@ -1,1 +1,741 @@
-<!DOCTYPE html><html lang="en">...
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="DesigniDL Admin Panel — Manage access tokens for your Designi download portal.">
+<title>DesigniDL — Admin Panel</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&amp;display=swap" rel="stylesheet">
+<style>
+/*
+  ═══════════════════════════════════════
+  In production:
+  - Replace in-memory TOKENS array with fetch() calls to your backend API.
+  - Replace admin password check with a proper auth endpoint.
+  - The TOKEN_DB in the user app should be fetched from /api/tokens on page load.
+  ═══════════════════════════════════════
+*/
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0f0f0d;
+  --surface:#161614;
+  --surface2:#1c1b19;
+  --surface3:#222220;
+  --text:#d4d3d0;
+  --muted:#7a7876;
+  --faint:#4a4947;
+  --primary:#e07b1a;
+  --primary-h:#c06510;
+  --error:#c94f6d;
+  --success:#5a9e3a;
+  --warning:#c47b20;
+  --border:rgba(255,255,255,0.08);
+  --r:10px;
+  --r-lg:16px;
+  --r-xl:22px;
+  --rf:9999px;
+  --shadow:0 4px 20px rgba(0,0,0,0.45);
+  --ease:180ms cubic-bezier(0.16,1,0.3,1);
+  --font:'Satoshi',system-ui,-apple-system,sans-serif;
+}
+
+html.light{
+  --bg:#f4f3f0;
+  --surface:#ffffff;
+  --surface2:#f0efec;
+  --surface3:#e8e7e4;
+  --text:#1a1a18;
+  --muted:#6b6966;
+  --faint:#a8a6a3;
+  --border:rgba(0,0,0,0.09);
+  --shadow:0 4px 20px rgba(0,0,0,0.08);
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important}
+}
+
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ═══════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════ */
+.app-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{color:var(--primary);flex-shrink:0}
+.brand-name{font-weight:700;font-size:18px;letter-spacing:-0.3px}
+.brand-sub{font-size:12px;color:var(--muted);font-weight:500;margin-left:4px}
+.header-right{display:flex;align-items:center;gap:10px}
+
+.btn-icon{
+  width:36px;height:36px;border:none;border-radius:var(--rf);
+  background:var(--surface2);color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background var(--ease),color var(--ease);
+}
+.btn-icon:hover{background:var(--surface3);color:var(--text)}
+.btn-icon:active{transform:scale(0.97)}
+.btn-icon svg{width:18px;height:18px}
+
+main{max-width:900px;margin:0 auto;padding:24px 16px 80px}
+
+/* ═══════════════════════════════════════
+   CARDS
+   ═══════════════════════════════════════ */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:24px;
+  margin-bottom:20px;box-shadow:var(--shadow);
+}
+.card-title{font-size:15px;font-weight:700;margin-bottom:16px;letter-spacing:-0.2px}
+
+/* ═══════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  height:44px;padding:0 22px;border:none;border-radius:var(--r);
+  font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;
+  transition:background var(--ease),transform var(--ease);
+  white-space:nowrap;
+}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-h)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.btn-ghost{background:var(--surface2);color:var(--muted)}
+.btn-ghost:hover{background:var(--surface3);color:var(--text)}
+.btn-sm{height:32px;padding:0 12px;font-size:12px;border-radius:8px}
+.btn-danger{background:rgba(201,79,109,0.12);color:var(--error)}
+.btn-danger:hover{background:rgba(201,79,109,0.2)}
+.btn-success{background:rgba(90,158,58,0.12);color:var(--success)}
+.btn-success:hover{background:rgba(90,158,58,0.2)}
+.btn-warn{background:rgba(196,123,32,0.12);color:var(--warning)}
+.btn-warn:hover{background:rgba(196,123,32,0.2)}
+
+/* ═══════════════════════════════════════
+   INPUTS
+   ═══════════════════════════════════════ */
+.input,.select{
+  width:100%;height:44px;padding:0 14px;
+  background:var(--surface2);color:var(--text);
+  border:1px solid var(--border);border-radius:var(--r);
+  font-family:var(--font);font-size:14px;
+  transition:border-color var(--ease);outline:none;
+}
+.input:focus,.select:focus{border-color:var(--primary)}
+.input::placeholder{color:var(--faint)}
+.select{appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg width='12' height='7' viewBox='0 0 12 7' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%237a7876' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;
+}
+.field-label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;display:block}
+
+/* ═══════════════════════════════════════
+   LOGIN SCREEN
+   ═══════════════════════════════════════ */
+.login-screen{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:24px;
+}
+.login-box{
+  width:100%;max-width:380px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-xl);padding:40px 32px;
+  box-shadow:var(--shadow);text-align:left;
+}
+.login-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.login-brand svg{color:var(--primary)}
+.login-brand span{font-size:22px;font-weight:700;letter-spacing:-0.3px}
+.login-sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+.login-label{font-size:13px;font-weight:600;margin-bottom:6px;display:block}
+.login-box .input{margin-bottom:16px}
+.login-box .btn{width:100%;margin-bottom:12px}
+.login-err{color:var(--error);font-size:13px;min-height:20px;margin-top:4px}
+
+/* ═══════════════════════════════════════
+   STATS GRID
+   ═══════════════════════════════════════ */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px;margin-bottom:20px;
+}
+.stat-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:18px 16px;box-shadow:var(--shadow);
+}
+.stat-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:700;letter-spacing:-0.5px}
+.stat-value.teal{color:#01696f}
+.stat-value.green{color:var(--success)}
+.stat-value.orange{color:var(--warning)}
+.stat-value.red{color:var(--error)}
+
+/* ═══════════════════════════════════════
+   GENERATE FORM
+   ═══════════════════════════════════════ */
+.gen-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:600px){.gen-row{grid-template-columns:1fr}}
+
+.gen-result{
+  display:none;margin-top:16px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px;
+}
+.gen-result.show{display:block}
+.gen-token{
+  font-family:'SF Mono',SFMono-Regular,Consolas,monospace;
+  font-size:24px;font-weight:700;letter-spacing:3px;
+  margin-bottom:8px;word-break:break-all;
+}
+.gen-meta{font-size:12px;color:var(--muted);margin-bottom:14px}
+
+/* ═══════════════════════════════════════
+   TABLE
+   ═══════════════════════════════════════ */
+.table-controls{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.table-controls .input{max-width:280px}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{
+  text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.5px;color:var(--muted);padding:10px 12px;
+  border-bottom:1px solid var(--border);
+}
+td{padding:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:var(--surface2)}
+.mono{font-family:'SF Mono',SFMono-Regular,Consolas,monospace;font-size:12px;letter-spacing:0.5px}
+
+.badge{
+  display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.3px;padding:3px 8px;border-radius:var(--rf);
+}
+.badge-active{background:rgba(90,158,58,0.15);color:var(--success)}
+.badge-expiring{background:rgba(196,123,32,0.15);color:var(--warning)}
+.badge-expired{background:rgba(201,79,109,0.15);color:var(--error)}
+
+.actions-cell{display:flex;gap:6px;flex-wrap:nowrap}
+
+.empty-table{text-align:center;padding:40px;color:var(--faint);font-size:13px}
+
+/* ═══════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════ */
+.toast-wrap{
+  position:fixed;bottom:20px;right:20px;z-index:9999;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none;
+}
+.toast{
+  pointer-events:auto;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px 18px;
+  font-size:13px;box-shadow:var(--shadow);
+  opacity:0;transform:translateX(30px);
+  transition:opacity 250ms ease,transform 250ms ease;
+  max-width:340px;
+}
+.toast.show{opacity:1;transform:translateX(0)}
+.toast.tok{border-left:3px solid var(--success)}
+.toast.terr{border-left:3px solid var(--error)}
+.toast.twarn{border-left:3px solid var(--warning)}
+
+/* ═══════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════ */
+@media(max-width:500px){
+  .app-header{padding:12px 14px}
+  main{padding:16px 10px 80px}
+  .card{padding:18px 14px}
+  .login-box{padding:28px 20px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .table-controls .input{max-width:100%;flex:1}
+}
+</style>
+<style id="antigravity-scroll-lock-style">
+  html:root body.antigravity-scroll-lock {
+    overflow: hidden !important;
+  }
+</style><style>
+  body::-webkit-scrollbar {
+    display: none;
+  }
+  html::-webkit-scrollbar {
+    display: none;
+  }
+</style></head>
+<body class="">
+
+<!-- ═══════════════════════════════════════
+     ADMIN LOGIN SCREEN
+     ═══════════════════════════════════════ -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <div class="login-brand">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="2" fill="none"></circle>
+        <rect x="13" y="15" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="2" fill="none"></rect>
+        <path d="M14 15V12a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
+        <circle cx="18" cy="20.5" r="1.2" fill="currentColor"></circle>
+      </svg>
+      <span>DesigniDL</span>
+    </div>
+    <p class="login-sub">Admin Panel — Enter your password to continue.</p>
+    <label class="login-label" for="passInput">Password</label>
+    <input id="passInput" class="input" type="password" placeholder="Enter admin password" autocomplete="off">
+    <button id="loginBtn" class="btn btn-primary" type="button">Sign In</button>
+    <div id="loginErr" class="login-err"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     ADMIN APP
+     ═══════════════════════════════════════ -->
+<div id="appWrap" style="display:none">
+  <header class="app-header">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+        <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="2" fill="none"></circle>
+        <rect x="13" y="15" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="2" fill="none"></rect>
+        <path d="M14 15V12a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
+        <circle cx="18" cy="20.5" r="1.2" fill="currentColor"></circle>
+      </svg>
+      <span class="brand-name">DesigniDL</span>
+      <span class="brand-sub">Admin</span>
+    </div>
+    <div class="header-right">
+      <button id="themeBtn" class="btn-icon" title="Toggle theme" aria-label="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+      <button id="logoutBtn" class="btn-icon" title="Logout" aria-label="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- STATS -->
+    <section class="stats-grid" id="statsGrid">
+      <div class="stat-box">
+        <div class="stat-label">Total Tokens</div>
+        <div class="stat-value teal" id="statTotal">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Active</div>
+        <div class="stat-value green" id="statActive">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Expiring ≤5 days</div>
+        <div class="stat-value orange" id="statExpiring">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Expired</div>
+        <div class="stat-value red" id="statExpired">0</div>
+      </div>
+    </section>
+
+    <!-- GENERATE TOKEN -->
+    <div class="card">
+      <div class="card-title">Generate Token</div>
+      <div class="gen-row">
+        <div>
+          <label class="field-label" for="genName">Customer Name (optional)</label>
+          <input id="genName" class="input" type="text" placeholder="e.g. João Silva" autocomplete="off">
+        </div>
+        <div>
+          <label class="field-label" for="genPlan">Plan Duration</label>
+          <select id="genPlan" class="select">
+            <option value="30">Monthly (30 days)</option>
+            <option value="7">Weekly (7 days)</option>
+            <option value="90">Quarterly (90 days)</option>
+            <option value="365">Yearly (365 days)</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label" for="genLimit">Daily Limit</label>
+          <select id="genLimit" class="select">
+            <option value="20">Standard (20/day)</option>
+            <option value="50">Pro (50/day)</option>
+            <option value="5">Basic (5/day)</option>
+            <option value="999">Unlimited (999/day)</option>
+          </select>
+        </div>
+      </div>
+      <button id="genBtn" class="btn btn-primary" type="button">Generate Token</button>
+
+      <div class="gen-result" id="genResult">
+        <div class="gen-token" id="genTokenDisplay"></div>
+        <div class="gen-meta" id="genTokenMeta"></div>
+        <button id="copyBtn" class="btn btn-ghost btn-sm" type="button">Copy Token</button>
+      </div>
+    </div>
+
+    <!-- TOKENS TABLE -->
+    <div class="card">
+      <div class="card-title">Token Management</div>
+      <div class="table-controls">
+        <input id="searchInput" class="input" type="text" placeholder="Search by token or customer…" autocomplete="off">
+        <button id="clearExpiredBtn" class="btn btn-ghost btn-sm btn-danger" type="button">Clear Expired</button>
+        <button id="exportBtn" class="btn btn-ghost btn-sm" type="button">Export JSON</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Customer</th>
+              <th>Plan</th>
+              <th>Daily Limit</th>
+              <th>Expires</th>
+              <th>Days Left</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tokensBody"></tbody>
+        </table>
+        <div class="empty-table" id="emptyTable" style="display:none">No tokens found.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ═══════════════════════════════════════
+   ADMIN PASSWORD
+   ═══════════════════════════════════════
+   ⚠ CHANGE BEFORE DEPLOYING ⚠
+*/
+const ADMIN_PASS = 'DesigniAdmin2024!';
+
+/*
+  ═══════════════════════════════════════
+  In production:
+  - Replace in-memory TOKENS array with fetch() calls to your backend API.
+  - Replace admin password check with a proper auth endpoint.
+  - The TOKEN_DB in the user app should be fetched from /api/tokens on page load.
+  ═══════════════════════════════════════
+*/
+
+/* ═══════════════════════════════════════
+   COOKIE HELPERS
+   ═══════════════════════════════════════ */
+function setCookie(n,v,d){const e=new Date();e.setTime(e.getTime()+d*864e5);document.cookie=n+'='+encodeURIComponent(v)+';expires='+e.toUTCString()+';path=/;SameSite=Lax'}
+function getCookie(n){const m=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return m?decodeURIComponent(m.pop()):null}
+function delCookie(n){document.cookie=n+'=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax'}
+
+/* ═══════════════════════════════════════
+   TOKEN DATA (in-memory)
+   ═══════════════════════════════════════ */
+const now = Date.now();
+let TOKENS = [
+  { id:'DEMO-1234-ABCD', name:'Demo User', days:30, dailyLimit:20, createdAt:now, expiresAt:now+30*864e5 },
+  { id:'VIP-9999-ZZZZ',  name:'VIP Client', days:30, dailyLimit:50, createdAt:now, expiresAt:now+30*864e5 },
+  { id:'TEST-0000-TEST', name:'Test Account', days:30, dailyLimit:5,  createdAt:now-31*864e5, expiresAt:now-1*864e5 } // already expired
+];
+
+/* ═══════════════════════════════════════
+   TOKEN GENERATION
+   ═══════════════════════════════════════ */
+const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function randChar(){ return CHARS[Math.floor(Math.random()*CHARS.length)] }
+function genTokenId(){
+  let s='';
+  for(let i=0;i<4;i++) s+=randChar();
+  s+='-';
+  for(let i=0;i<4;i++) s+=randChar();
+  s+='-';
+  for(let i=0;i<4;i++) s+=randChar();
+  return s;
+}
+
+/* ═══════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════ */
+function toast(msg,type){
+  const w=document.getElementById('toastWrap');
+  const el=document.createElement('div');
+  el.className='toast '+(type||'');
+  el.textContent=msg;
+  w.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),300)},3500);
+}
+
+/* ═══════════════════════════════════════
+   THEME
+   ═══════════════════════════════════════ */
+const moonSVG='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+const sunSVG='<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+function setTheme(light){
+  document.documentElement.classList.toggle('light',light);
+  document.getElementById('themeIcon').innerHTML=light?moonSVG:sunSVG;
+  setCookie('adm_theme',light?'light':'dark',365);
+}
+
+/* ═══════════════════════════════════════
+   RENDER STATS
+   ═══════════════════════════════════════ */
+function renderStats(){
+  const n=Date.now();
+  const total=TOKENS.length;
+  let active=0,expiring=0,expired=0;
+  TOKENS.forEach(t=>{
+    const dl=Math.ceil((t.expiresAt-n)/864e5);
+    if(dl<=0) expired++;
+    else if(dl<=5){ expiring++; active++; }
+    else active++;
+  });
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statActive').textContent=active;
+  document.getElementById('statExpiring').textContent=expiring;
+  document.getElementById('statExpired').textContent=expired;
+}
+
+/* ═══════════════════════════════════════
+   RENDER TABLE
+   ═══════════════════════════════════════ */
+function renderTable(filter){
+  const tbody=document.getElementById('tokensBody');
+  const empty=document.getElementById('emptyTable');
+  const n=Date.now();
+  const q=(filter||'').toLowerCase();
+
+  let filtered=TOKENS;
+  if(q){
+    filtered=TOKENS.filter(t=>t.id.toLowerCase().includes(q)||(t.name||'').toLowerCase().includes(q));
+  }
+
+  if(filtered.length===0){
+    tbody.innerHTML='';
+    empty.style.display='';
+    return;
+  }
+  empty.style.display='none';
+
+  tbody.innerHTML=filtered.map((t,i)=>{
+    const dl=Math.ceil((t.expiresAt-n)/864e5);
+    const expDate=new Date(t.expiresAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    let status,badge;
+    if(dl<=0){ status='Expired'; badge='badge-expired'; }
+    else if(dl<=5){ status='Expiring'; badge='badge-expiring'; }
+    else{ status='Active'; badge='badge-active'; }
+    const dlColor=dl<=0?'red':dl<=5?'orange':'green';
+    const planLabel=t.days+'d';
+
+    return `<tr>
+      <td class="mono">${t.id}</td>
+      <td>${esc(t.name||'—')}</td>
+      <td>${planLabel}</td>
+      <td>${t.dailyLimit}/day</td>
+      <td>${expDate}</td>
+      <td style="color:var(--${dlColor})">${dl<=0?'Expired':dl+'d'}</td>
+      <td><span class="badge ${badge}">${status}</span></td>
+      <td><div class="actions-cell">
+        <button class="btn btn-sm btn-success" onclick="extendToken('${t.id}')">+Extend</button>
+        <button class="btn btn-sm btn-danger" onclick="revokeToken('${t.id}')">Revoke</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+/* ═══════════════════════════════════════
+   SYNC TOKENS TO SHARED COOKIE
+   ═══════════════════════════════════════
+   Saves all active tokens to a ddl_tokens cookie so the user app
+   (designidl-app.html) can validate admin-generated tokens.
+   Both files must be on the same domain for this to work.
+*/
+function syncTokensCookie(){
+  try{
+    const data=TOKENS.map(t=>({id:t.id,days:t.days,dailyLimit:t.dailyLimit,expiresAt:t.expiresAt}));
+    setCookie('ddl_tokens',JSON.stringify(data),365);
+  }catch(e){/* cookie too large — ignore */}
+}
+
+/* ═══════════════════════════════════════
+   TOKEN ACTIONS
+   ═══════════════════════════════════════ */
+function extendToken(id){
+  const t=TOKENS.find(x=>x.id===id);
+  if(!t) return;
+  const n=Date.now();
+  // If expired, extend from now; otherwise extend from current expiry
+  const base=t.expiresAt<n?n:t.expiresAt;
+  t.expiresAt=base+t.days*864e5;
+  renderAll();
+  toast('Extended '+id+' by '+t.days+' days.','tok');
+}
+
+function revokeToken(id){
+  if(!confirm('Revoke token '+id+'? This cannot be undone.')) return;
+  TOKENS=TOKENS.filter(x=>x.id!==id);
+  renderAll();
+  toast('Revoked '+id+'.','twarn');
+}
+
+function renderAll(){
+  renderStats();
+  renderTable(document.getElementById('searchInput').value);
+  syncTokensCookie();
+}
+
+/* ═══════════════════════════════════════
+   EXPORT
+   ═══════════════════════════════════════ */
+function exportTokens(){
+  const db={};
+  TOKENS.forEach(t=>{
+    db[t.id]={dailyLimit:t.dailyLimit,monthlyLimit:t.dailyLimit*30,days:t.days};
+  });
+  const json=JSON.stringify(db,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='tokens.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  toast('Exported tokens.json','tok');
+}
+
+/* ═══════════════════════════════════════
+   COPY TO CLIPBOARD
+   ═══════════════════════════════════════ */
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    toast('Copied to clipboard!','tok');
+  }catch{
+    // Fallback
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');toast('Copied!','tok')}
+    catch{toast('Copy failed — select manually.','terr')}
+    ta.remove();
+  }
+}
+
+/* ═══════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded',()=>{
+  // Theme
+  if(getCookie('adm_theme')==='light') setTheme(true);
+
+  // Check auth cookie
+  if(getCookie('admin_auth')==='1'){
+    showApp();
+  }
+
+  // Login
+  document.getElementById('loginBtn').addEventListener('click',()=>{
+    const pass=document.getElementById('passInput').value;
+    const err=document.getElementById('loginErr');
+    if(pass===ADMIN_PASS){
+      setCookie('admin_auth','1',1);
+      err.textContent='';
+      showApp();
+      toast('Welcome, Admin.','tok');
+    }else{
+      err.textContent='❌ Incorrect password.';
+    }
+  });
+
+  document.getElementById('passInput').addEventListener('keydown',e=>{
+    if(e.key==='Enter') document.getElementById('loginBtn').click();
+  });
+
+  // Logout
+  document.getElementById('logoutBtn').addEventListener('click',()=>{
+    delCookie('admin_auth');
+    document.getElementById('loginScreen').style.display='';
+    document.getElementById('appWrap').style.display='none';
+    toast('Logged out.','twarn');
+  });
+
+  // Theme toggle
+  document.getElementById('themeBtn').addEventListener('click',()=>{
+    setTheme(!document.documentElement.classList.contains('light'));
+  });
+
+  // Generate token
+  document.getElementById('genBtn').addEventListener('click',()=>{
+    const name=document.getElementById('genName').value.trim();
+    const days=parseInt(document.getElementById('genPlan').value);
+    const limit=parseInt(document.getElementById('genLimit').value);
+    const id=genTokenId();
+    const n=Date.now();
+
+    TOKENS.push({id,name:name||'',days,dailyLimit:limit,createdAt:n,expiresAt:n+days*864e5});
+    syncTokensCookie();
+
+    // Show result
+    document.getElementById('genTokenDisplay').textContent=id;
+    const planNames={7:'Weekly',30:'Monthly',90:'Quarterly',365:'Yearly'};
+    document.getElementById('genTokenMeta').textContent=
+      (planNames[days]||days+'d')+' plan · '+limit+'/day limit'+(name?' · '+name:'');
+    document.getElementById('genResult').classList.add('show');
+
+    renderAll();
+    toast('Token generated: '+id,'tok');
+  });
+
+  // Copy token
+  document.getElementById('copyBtn').addEventListener('click',()=>{
+    const token=document.getElementById('genTokenDisplay').textContent;
+    copyText(token);
+  });
+
+  // Search
+  document.getElementById('searchInput').addEventListener('input',e=>{
+    renderTable(e.target.value);
+  });
+
+  // Clear expired
+  document.getElementById('clearExpiredBtn').addEventListener('click',()=>{
+    const n=Date.now();
+    const before=TOKENS.length;
+    TOKENS=TOKENS.filter(t=>t.expiresAt>n);
+    const removed=before-TOKENS.length;
+    renderAll();
+    toast(removed>0?'Removed '+removed+' expired token(s).':'No expired tokens to remove.',removed>0?'tok':'twarn');
+  });
+
+  // Export
+  document.getElementById('exportBtn').addEventListener('click',exportTokens);
+});
+
+function showApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appWrap').style.display='';
+  renderAll();
+  syncTokensCookie(); // Sync pre-seeded tokens on first load
+}
+</script>
+
+
+<div id="preact-border-shadow-host" popover="manual" style="border: none; padding: 0px; margin: 0px; inset: 0px; position: fixed; width: 100vw; height: 100vh; background: transparent; pointer-events: none;"></div></body></html>
